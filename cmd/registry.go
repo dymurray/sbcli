@@ -41,6 +41,15 @@ var defaultQuayConfig = registries.Config{
 	WhiteList: []string{".*$"},
 }
 
+var defaultApiV2Config = registries.Config{
+	Name:          "apiv2",
+	Type:          "apiv2",
+	URL:           "http://brew-pulp-docker01.web.prod.ext.phx2.redhat.com:8888",
+	Images:        []string{"openshift3/mediawiki-apb"},
+	WhiteList:     []string{".*$"},
+	SkipVerifyTLS: true,
+}
+
 var defaultDockerHubConfig = registries.Config{
 	Name:      "dockerhub",
 	Type:      "dockerhub",
@@ -101,6 +110,8 @@ func init() {
 	// Registry Add Flags
 	registryAddCmd.Flags().StringVarP(&registryConfig.Config.Type, "type", "t", "dockerhub", "registry type (dockerhub, local_openshift, helm)")
 	registryAddCmd.Flags().StringVar(&registryConfig.Config.Tag, "tag", "", "specify the tag of images in registry (e.g. 'latest')")
+	registryAddCmd.Flags().StringVar(&registryConfig.Config.User, "user", "", "specify the basic auth username (not required in most adapters)")
+	registryAddCmd.Flags().StringVar(&registryConfig.Config.Pass, "pass", "", "specify the basic auth password (not required in most adapters)")
 	registryAddCmd.Flags().StringVar(&registryConfig.Config.Org, "org", "", "organization for 'dockerhub' adapter to search (e.g. 'ansible-playbook-bundle')")
 	registryAddCmd.Flags().StringVar(&registryConfig.Config.Runner, "runner", "", "base image used to run Helm APBs (e.g. 'docker.io/automationbroker/helm-runner:latest')")
 	registryAddCmd.Flags().StringVar(&registryConfig.Config.URL, "url", "", "URL (e.g. docker.io)")
@@ -131,9 +142,15 @@ func addRegistry(addName string) {
 		newConfig.Config = defaultHelmConfig
 	case "quay":
 		newConfig.Config = defaultQuayConfig
+	case "openshift", "apiv2":
+		newConfig.Config = defaultApiV2Config
+	case "partner_rhcc":
+		newConfig.Config = defaultApiV2Config
+		newConfig.Config.Type = "partner_rhcc"
+		newConfig.Config.URL = "https://registry.connect.redhat.com"
 	default:
 		fmt.Printf("Unrecognized registry type [%v]\n", registryConfig.Config.Type)
-		fmt.Printf("Supported types are: dockerhub, local_openshift, helm.\n")
+		fmt.Printf("Supported types are: dockerhub, local_openshift, helm, openshift, apiv2.\n")
 		return
 	}
 	newConfig.Config.Name = addName
@@ -181,6 +198,12 @@ func applyOverrides(conf *registries.Config, params registries.Config) {
 	}
 	if params.Tag != "" {
 		conf.Tag = params.Tag
+	}
+	if params.User != "" {
+		conf.User = params.User
+	}
+	if params.Pass != "" {
+		conf.Pass = params.Pass
 	}
 	if len(params.Namespaces) > 0 {
 		conf.Namespaces = params.Namespaces
